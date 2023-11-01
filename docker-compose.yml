@@ -10,4 +10,4 @@ services:
       - MONGO_URL: ${MONGO_URL}
     command: npm start
     ports:
-      - 8080:8080
+      - 5000:5000
