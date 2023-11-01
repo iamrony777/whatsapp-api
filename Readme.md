@@ -23,7 +23,6 @@ This is a Node.js server application that allows you to send WhatsApp messages u
 ## Before running this application, make sure you have the following installed:
 
 - Node.js: [Download Node.js](https://nodejs.org/)
-- MongoDB 
 
 ## Installation
 
