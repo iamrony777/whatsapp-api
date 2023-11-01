@@ -76,3 +76,4 @@ curl -X POST http://localhost:5000/send-message -H "Content-Type: application/js
 2. Implement Client Custom actions.
 3. Enable Broadcast Messages.
 4. Provide an endpoint to show server logs (e.g., /chats).
+5. Error Handlings 
