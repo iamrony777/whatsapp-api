@@ -58,4 +58,4 @@ async function connectionLogic(phonenum) {
   sock.ev.on("creds.update", saveCreds);
 }
 
-// call this function in the dashboard it will generate a qr code, pass down the phone number in the parameter connectionLogic(phonenum);
+// call this function in the dashboard it will generate a qr code (in the console here, modify if (qr) accordingly to get it in the webpage), pass down the phone number in the parameter connectionLogic(phonenum);
