@@ -1,0 +1,12 @@
+version: '3.4'
+
+services:
+  forgeapi:
+    image: forgeapi
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    environment:
+      - MONGO_URL: ${MONGO_URL}
+    ports:
+      - 8080:8080
