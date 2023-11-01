@@ -10,7 +10,7 @@ const { MongoClient } = require("mongodb");
 const pino = require('pino');
 
 
-async function connectionLogic() {
+async function connectionLogic(phonenum) {
   const mongoClient = new MongoClient(mongoURL, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
@@ -18,7 +18,7 @@ async function connectionLogic() {
   await mongoClient.connect();
   // const { state, saveCreds } = await useMultiFileAuthState("auth_info_baileys");
   const collection = mongoClient
-    .db("test")
+    .db(phonenum)
     .collection("auth_info_baileys");
   const { state, saveCreds } = await useMongoDBAuthState(collection);
   const sock = makeWASocket({
@@ -58,4 +58,4 @@ async function connectionLogic() {
   sock.ev.on("creds.update", saveCreds);
 }
 
-connectionLogic();
+// call this function in the dashboard it will generate a qr code, pass down the phone number in the parameter connectionLogic(phonenum);
