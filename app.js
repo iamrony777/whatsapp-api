@@ -35,6 +35,8 @@ setInterval(() => {
 app.post("/send-message", async (req, res) => {
   try {
     const { id, phonenum, text, audio, video, gifPlayback, caption,image } = req.body;
+    const jid = id + '@s.whatsapp.net';
+    
     const mongoClient = new MongoClient(mongoURL, {
         useNewUrlParser: true,
         useUnifiedTopology: true,
@@ -49,7 +51,7 @@ app.post("/send-message", async (req, res) => {
       logger: pino({ level: 'silent' }),
       auth: state,
     });
-
+    
     sock.ev.on("connection.update", async (update) => {
       const { connection, lastDisconnect, qr } = update || {};
 
@@ -61,37 +63,49 @@ app.post("/send-message", async (req, res) => {
             
         }
       } else if (connection === "open") {
+        const exist = await sock.onWhatsApp(jid); // Correctly use `sock` instead of `socket`
+      if (exist.length === 0) {
+        res.status(404).json({ error: "The number doesn't exist or isn't registered in WhatsApp." });
+        return;
+      }
         if (text) {
-          const sentMsg = await sock.sendMessage(id, { text });
+          const sentMsg = await sock.sendMessage(jid, { text });
           console.log("Message sent:", sentMsg);
+          res.status(200).json({ message: "Message sent successfully." });
         } else if (audio) {
           if (audio.startsWith("file://")) {
             const filePath = audio.replace("file://", "");
             const audioBuffer = await bufferRead(filePath);
-            await sock.sendMessage(id, { audio: audioBuffer, mimetype: "audio/mp4" });
+            await sock.sendMessage(jid, { audio: audioBuffer, mimetype: "audio/mp4" });
+            res.status(200).json({ message: "Message sent successfully." });
+
           } else if (audio.startsWith("http")) {
             // Use buffer read for audio link
             const audioBuffer = await axios.get(audio, { responseType: 'arraybuffer' });
-            await sock.sendMessage(id, { audio: audioBuffer.data, mimetype: "audio/mp4" });
+            await sock.sendMessage(jid, { audio: audioBuffer.data, mimetype: "audio/mp4" });
+            res.status(200).json({ message: "Message sent successfully." });
+
           }
         } else if (video) {
           {
             const videoResponse = await axios.get(video, { responseType: 'arraybuffer' });
             const videoBuffer = Buffer.from(videoResponse.data);
-            await sock.sendMessage(id, {
+            await sock.sendMessage(jid, {
               video: videoBuffer,
               caption: caption,
               gifPlayback:true,
             });
-          
+            res.status(200).json({ message: "Message sent successfully." });   
           }
         }  else if (image) {
             const imageResponse = await axios.get(image, { responseType: 'arraybuffer' });
             const imageBuffer = Buffer.from(imageResponse.data);
-            await sock.sendMessage(id, {
+            await sock.sendMessage(jid, {
               image: imageBuffer,
               caption: caption,
             });
+            res.status(200).json({ message: "Message sent successfully." });
+
           } 
       }
     });
@@ -116,7 +130,6 @@ app.post("/send-message", async (req, res) => {
 
     sock.ev.on("creds.update", saveCreds);
 
-    res.status(200).json({ message: "Message sent successfully." });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "An error occurred while sending the message." });
