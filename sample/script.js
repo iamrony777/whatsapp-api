@@ -9,6 +9,14 @@ const mongoURL = process.env.MONGO_URL || "mongodb+srv://ash:ash@cluster0.afau75
 const { MongoClient } = require("mongodb");
 const pino = require('pino');
 
+// Check if the phone number argument is provided
+if (process.argv.length < 3) {
+  console.error("Please provide a phone number as a command-line argument.");
+  process.exit(1); // Exit the script with an error code
+}
+
+// Extract the phone number from the command-line arguments
+const phonenum = process.argv[2];
 
 async function connectionLogic(phonenum) {
   const mongoClient = new MongoClient(mongoURL, {
@@ -43,7 +51,7 @@ async function connectionLogic(phonenum) {
         DisconnectReason.loggedOut;
 
       if (shouldReconnect) {
-        connectionLogic();
+        connectionLogic(phonenum);
       }
     }
   });
@@ -58,5 +66,5 @@ async function connectionLogic(phonenum) {
   sock.ev.on("creds.update", saveCreds);
 }
 
-// call this function in the dashboard it will generate a qr code (in the console here, modify if (qr) accordingly to get it in the webpage), pass down the phone number in the parameter connectionLogic(phonenum);
-connectionLogic(''); // add phone number
+// Call the connectionLogic function with the provided phone number
+connectionLogic(phonenum);
