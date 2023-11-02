@@ -28,7 +28,7 @@ This is a Node.js server application that allows you to send WhatsApp messages u
    ```bash
    git clone https://github.com/FutureForge-Studios/whatsapp-api.git
    cd whatsapp-api 
-
+   ```
    
 2. Install the required dependencies:
     ```
@@ -60,7 +60,7 @@ To send a WhatsApp message, make a POST request to the `/send-message` endpoint 
 
 ```bash
 curl -X POST http://localhost:5000/send-message -H "Content-Type: application/json" -d '{
-  "id": "recipient_phone_number@s.whatsapp.net",
+  "id": "recipient_phone_number",
   "phonenum": "your_phone_number",
   "text": "Hello, world!"
 }'
