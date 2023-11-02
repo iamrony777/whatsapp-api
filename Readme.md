@@ -10,13 +10,10 @@ This is a Node.js server application that allows you to send WhatsApp messages u
    ```bash
    cd sample
    ```
-2. Edit the connectionLogic function in the last line of the code to include your phone number. For example:
-    ```javascript
-    connectionLogic('919999999999'); // Replace with your phone number
-    ```
-3. Run your code with 
+3. Get QR Code by running `node script.js <phone-number>`
+   For eg.
     ```bash
-    node script.js
+    node script.js 919321654780
     ```
 4. Scan the QR code to register your phone number in the database. Do not log out of the session.
 
