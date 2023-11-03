@@ -18,6 +18,8 @@ const fs = require('fs');
 const filePath = './baileys_store.json';
 const store = makeInMemoryStore({});
 const bufferRead = promisify(fs.readFile);
+const qrcode = require('qrcode');
+
 
 app.use(express.json());
 let mongoClient;
