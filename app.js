@@ -245,6 +245,56 @@ app.get("/check", async (req, res) => {
         }
     });
 });
+mongoClient = new MongoClient(mongoURL, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
+
+mongoClient.connect()
+  .then(() => {
+    console.log('Connected to MongoDB');
+  })
+  .catch(err => {
+    console.error('Error connecting to MongoDB:', err);
+  });
+
+app.get('/qr', async (req, res) => {
+  const phonenum = req.query.phonenum;
+
+  const collection = mongoClient.db(phonenum).collection('auth_info_baileys');
+  const existingSession = await collection.findOne({});
+
+  if (existingSession) {
+    res.status(404).json({ error: 'Session already exists. To rescan, remove the session from the database and then request a new QR code.' });
+  } else {
+    const qrCodeURL = await generateQRCode(phonenum);
+    res.send(`<img src="${qrCodeURL}" alt="QR Code" />`);
+  }
+});
+
+async function generateQRCode(phonenum) {
+  const collection = mongoClient.db(phonenum).collection('auth_info_baileys');
+  const { state, saveCreds } = await useMongoDBAuthState(collection);
+
+  const sock = makeWASocket({
+    printQRInTerminal: false,
+    browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
+    logger: pino({ level: 'silent' }),
+    auth: state,
+  });
+
+  return new Promise((resolve, reject) => {
+    sock.ev.on('connection.update', async (update) => {
+      const { qr } = update || {};
+      if (qr) {
+        const qrCodeURL = await qrcode.toDataURL(qr);
+        resolve(qrCodeURL);
+      }
+    });
+
+    sock.ev.on('creds.update', saveCreds);
+  });
+}
 
 const port = 5000;
 app.listen(port, () => {
