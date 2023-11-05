@@ -262,7 +262,10 @@ mongoClient.connect()
 
 app.get('/qr', async (req, res) => {
   const phonenum = req.query.phonenum;
-
+  mongoClient = new MongoClient(mongoURL, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
   const collection = mongoClient.db(phonenum).collection('auth_info_baileys');
   const existingSession = await collection.findOne({});
 
