@@ -268,12 +268,14 @@ app.get('/qr', async (req, res) => {
   });
   const collection = mongoClient.db(phonenum).collection('auth_info_baileys');
   const existingSession = await collection.findOne({});
+ 
 
   if (existingSession) {
     res.status(404).json({ error: 'Session already exists. To rescan, remove the session from the database and then request a new QR code.' });
   } else {
     const qrCodeURL = await generateQRCode(phonenum);
     res.send(`<img src="${qrCodeURL}" alt="QR Code" />`);
+     const { state, saveCreds } = await useMongoDBAuthState(collection);
   }
 });
 
