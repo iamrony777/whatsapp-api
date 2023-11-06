@@ -1,25 +1,22 @@
 const express = require("express");
+const MongoClient = require("mongodb").MongoClient;
 const app = express();
-const {
-    DisconnectReason,
-    useMultiFileAuthState,
-} = require("@whiskeysockets/baileys");
+const QRCode = require("qrcode");
 const useMongoDBAuthState = require("./mongoAuthState");
+const {
+    delay,
+    useMultiFileAuthState,
+    fetchLatestBaileysVersion,
+    makeInMemoryStore,
+} = require('@whiskeysockets/baileys');
 const makeWASocket = require("@whiskeysockets/baileys").default;
-const { MessageType, MessageOptions, Mimetype } = require("@whiskeysockets/baileys");
-const { MongoClient } = require("mongodb");
-const pino = require('pino');
-const mongoURL = process.env.MONGO_URL || "mongodb+srv://ash:ash@cluster0.afau75l.mongodb.net";
-// replace with the required mongoURL
 const axios = require('axios');
-const { promisify } = require('util');
-const { makeInMemoryStore } = require("@whiskeysockets/baileys");
 const fs = require('fs');
+const pino = require('pino');
+const { DisconnectReason, MessageType, MessageOptions, Mimetype } = require("@whiskeysockets/baileys");
+const mongoURL = process.env.MONGO_URL || "mongodb+srv://ash:ash@cluster0.afau75l.mongodb.net";
 const filePath = './baileys_store.json';
 const store = makeInMemoryStore({});
-const bufferRead = promisify(fs.readFile);
-const qrcode = require('qrcode');
-
 
 app.use(express.json());
 let mongoClient;
@@ -247,6 +244,96 @@ app.get("/check", async (req, res) => {
         }
     });
 });
+
+app.get("/getQR/:phonenum", async (req, res) => {
+    const phonenum = req.params.phonenum;
+
+    const mongoClient = new MongoClient(mongoURL, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+    });
+
+    try {
+        await mongoClient.connect(); // Establish the MongoDB connection
+
+        const db = mongoClient.db(phonenum);
+        const collection = db.collection("auth_info_baileys");
+
+        // Check if the collection exists by listing all collections in the database
+        const collections = await db.listCollections().toArray();
+        const collectionExists = collections.some((coll) => coll.name === "auth_info_baileys");
+
+        if (collectionExists) {
+            // If the collection exists, delete the session by dropping the database
+            await db.dropDatabase();
+        }
+
+        // Generate and return a QR code image
+        async function Forge() {
+            const { state, saveCreds } = await useMongoDBAuthState(collection);
+            const { version, isLatest } = await fetchLatestBaileysVersion();
+          
+            try {
+              await mongoClient.connect(); // Establish the MongoDB connection
+              let sock = makeWASocket({
+                  printQRInTerminal: false,
+                  defaultQueryTimeoutMs: undefined,
+                  logger: pino({ level: 'fatal' }),
+                  auth: state,
+                  browser: [`Forge Bot`, "Safari", "3.0"],
+                  version,
+              });
+              sock.ev.on('connection.update', async (s) => {
+                console.log(s);
+              
+                if (s.qr !== undefined) {
+                    const qrDataUrl = await QRCode.toDataURL(s.qr);
+                    res.send(`<img src="${qrDataUrl}" alt="QR Code" />`);
+
+                }
+
+                  const { connection, lastDisconnect } = s;
+
+                  if (connection === 'open') {
+
+                      await delay(1000 * 10);
+
+                      await sock.sendMessage(sock.user.id, { text: 'Succesfully Connected To Forge Whatsapp Service, Database-' + phonenum })
+
+                      await delay(500 * 10);
+
+                      let anu = `Thank You For using our Service, Have a great day`;
+
+                      await sock.sendMessage(sock.user.id, {
+                          image: { url: 'https://i.imgur.com/R8BwMSb.png' },
+                          caption: anu,
+                      });
+                      process.exit(1);
+
+                  }
+                  if (connection === 'close' && lastDisconnect && lastDisconnect.error && lastDisconnect.error.output.statusCode != 401) {
+                    await Forge(); // Reconnect asynchronously
+                    
+                  
+                  }
+              });
+
+              sock.ev.on('creds.update', saveCreds);
+
+              sock.ev.on('messages.upsert', () => {});
+            } catch (ferr) {
+              console.error(ferr);
+            }
+          }
+
+          Forge();
+        } catch (error) {
+            console.error(error);
+        } finally {
+            await mongoClient.close(); // Close the MongoDB connection
+        }
+    });
+
 mongoClient = new MongoClient(mongoURL, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -260,48 +347,6 @@ mongoClient.connect()
     console.error('Error connecting to MongoDB:', err);
   });
 
-app.get('/qr', async (req, res) => {
-  const phonenum = req.query.phonenum;
-  mongoClient = new MongoClient(mongoURL, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  });
-  const collection = mongoClient.db(phonenum).collection('auth_info_baileys');
-  const existingSession = await collection.findOne({});
- 
-
-  if (existingSession) {
-    res.status(404).json({ error: 'Session already exists. To rescan, remove the session from the database and then request a new QR code.' });
-  } else {
-    const qrCodeURL = await generateQRCode(phonenum);
-    res.send(`<img src="${qrCodeURL}" alt="QR Code" />`);
-     const { state, saveCreds } = await useMongoDBAuthState(collection);
-  }
-});
-
-async function generateQRCode(phonenum) {
-  const collection = mongoClient.db(phonenum).collection('auth_info_baileys');
-  const { state, saveCreds } = await useMongoDBAuthState(collection);
-
-  const sock = makeWASocket({
-    printQRInTerminal: false,
-    browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
-    logger: pino({ level: 'silent' }),
-    auth: state,
-  });
-
-  return new Promise((resolve, reject) => {
-    sock.ev.on('connection.update', async (update) => {
-      const { qr } = update || {};
-      if (qr) {
-        const qrCodeURL = await qrcode.toDataURL(qr);
-        resolve(qrCodeURL);
-      }
-    });
-
-    sock.ev.on('creds.update', saveCreds);
-  });
-}
 
 const port = 5000;
 app.listen(port, () => {
