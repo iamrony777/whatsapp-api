@@ -7,7 +7,6 @@ const {
     delay,
     useMultiFileAuthState,
     fetchLatestBaileysVersion,
-    makeInMemoryStore,
 } = require('@whiskeysockets/baileys');
 const makeWASocket = require("@whiskeysockets/baileys").default;
 const axios = require('axios');
@@ -15,19 +14,11 @@ const fs = require('fs');
 const pino = require('pino');
 const { DisconnectReason, MessageType, MessageOptions, Mimetype } = require("@whiskeysockets/baileys");
 const mongoURL = process.env.MONGO_URL || "mongodb+srv://ash:ash@cluster0.afau75l.mongodb.net";
-const filePath = './baileys_store.json';
-const store = makeInMemoryStore({});
+const { makeMongoStore } = require("@iamrony777/baileys");
 
 app.use(express.json());
 let mongoClient;
-setInterval(() => {
-    try {
-        const jsonData = JSON.stringify(store.toJSON(), null, 2);
-        fs.writeFileSync(filePath, jsonData, 'utf8');
-    } catch (error) {
-        console.error('Error saving data to file:', error);
-    }
-}, 10_000);
+
 
 app.post("/send-message", async (req, res) => {
     try {
@@ -68,6 +59,13 @@ app.post("/send-message", async (req, res) => {
 
                 }
             } else if (connection === "open") {
+                const store = makeMongoStore({
+                    db: mongoClient.db(phonenum),
+                    filterChats: true,
+                  })
+                store.bind(sock.ev)
+        
+
                 const exist = await sock.onWhatsApp(jid); // Correctly use `sock` instead of `socket`
                 if (exist.length === 0) {
                     res.status(404).json({ error: "The number doesn't exist or isn't registered in WhatsApp." });
@@ -111,15 +109,10 @@ app.post("/send-message", async (req, res) => {
                 }
             }
         });
-        store.bind(sock.ev);
 
-        sock.ev.on("chats.set", () => {
-            console.log("got chats", store.chats.all());
-        });
-
-        sock.ev.on("contacts.set", () => {
-            console.log("got contacts", Object.values(store.contacts));
-        });
+        sock.ev.on('chats.set', () => {
+            console.log('got chats', store.chats.all())
+        })
 
         sock.ev.on("messages.update", (messageInfo) => {
             console.log(messageInfo);
@@ -295,6 +288,11 @@ app.get("/getQR/:phonenum", async (req, res) => {
                   const { connection, lastDisconnect } = s;
 
                   if (connection === 'open') {
+                    const store = makeMongoStore({
+                        db: mongoClient.db(phonenum),
+                        filterChats: true,
+                      })
+                    store.bind(sock.ev)
 
                       await delay(1000 * 10);
 
@@ -317,7 +315,9 @@ app.get("/getQR/:phonenum", async (req, res) => {
                   
                   }
               });
-
+              sock.ev.on('chats.set', () => {
+                console.log('got chats', store.chats.all())
+            })
               sock.ev.on('creds.update', saveCreds);
 
               sock.ev.on('messages.upsert', () => {});
