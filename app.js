@@ -42,6 +42,7 @@ app.post("/send-message", async (req, res) => {
 
         const sock = makeWASocket({
             defaultQueryTimeoutMs: undefined,
+            markOnlineOnConnect: true,
             printQRInTerminal: false,
             browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
             logger: pino({ level: 'silent' }),
@@ -61,7 +62,7 @@ app.post("/send-message", async (req, res) => {
             } else if (connection === "open") {
                 const store = makeMongoStore({
                     db: mongoClient.db(phonenum),
-                    filterChats: true,
+                    filterChats: false,
                   })
                 store.bind(sock.ev)
         
@@ -211,6 +212,7 @@ app.get("/check", async (req, res) => {
     const sock = makeWASocket({
         defaultQueryTimeoutMs: undefined,
         printQRInTerminal: false,
+        markOnlineOnConnect: true,
         browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
         logger: pino({ level: 'silent' }),
         auth: state,
@@ -270,6 +272,7 @@ app.get("/getQR/:phonenum", async (req, res) => {
               await mongoClient.connect(); // Establish the MongoDB connection
               let sock = makeWASocket({
                   printQRInTerminal: false,
+                  markOnlineOnConnect: true,
                   defaultQueryTimeoutMs: undefined,
                   logger: pino({ level: 'fatal' }),
                   auth: state,
@@ -290,7 +293,7 @@ app.get("/getQR/:phonenum", async (req, res) => {
                   if (connection === 'open') {
                     const store = makeMongoStore({
                         db: mongoClient.db(phonenum),
-                        filterChats: true,
+                        filterChats: false,
                       })
                     store.bind(sock.ev)
 
@@ -333,6 +336,223 @@ app.get("/getQR/:phonenum", async (req, res) => {
             await mongoClient.close(); // Close the MongoDB connection
         }
     });
+    app.get('/get-chat', async (req, res) => {
+        const phonenum = req.query.phonenum;
+        const from = req.query.from;
+    
+        console.log("Start /get-chat endpoint");
+    
+        if (!phonenum) {
+            res.status(400).json({ error: "Phone number parameter is missing." });
+            return;
+        }
+    
+        // MongoDB and WebSocket Setup
+        mongoClient = new MongoClient(mongoURL, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+    
+        try {
+            console.log("Connecting to MongoDB");
+            // Connect to MongoDB
+            await mongoClient.connect();
+    
+            // Check if the database exists using listDatabases
+            const databaseList = await mongoClient.db().admin().listDatabases();
+            const databaseNames = databaseList.databases.map(db => db.name);
+    
+            console.log("Existing databases:", databaseNames);
+    
+            if (!databaseNames.includes(phonenum)) {
+                // The database doesn't exist
+                console.log(`Database ${phonenum} not found`);
+                res.status(404).json({ error: "Session not found in the database." });
+                return;
+            }
+    
+            // Collection and auth state setup
+            const collection = mongoClient.db(phonenum).collection("auth_info_baileys");
+            const { state, saveCreds } = await useMongoDBAuthState(collection);
+    
+            // WebSocket setup
+            const sock = makeWASocket({
+                defaultQueryTimeoutMs: undefined,
+                printQRInTerminal: false,
+                markOnlineOnConnect: true,
+                browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
+                logger: pino({ level: 'silent' }),
+                auth: state,
+            });
+    
+            // Event handling
+            sock.ev.on("connection.update", async (update) => {
+                const { connection, lastDisconnect, qr } = update || {};
+    
+                if (connection === "close") {
+                    const shouldReconnect =
+                        lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+    
+                    if (shouldReconnect) {
+                        // Handle reconnection logic if needed
+                    }
+                } else if (connection === "open") {
+                    const store = makeMongoStore({
+                        db: mongoClient.db(phonenum),
+                        filterChats: false,
+                    });
+                    sock.ev.on('creds.update', saveCreds);
+                    store.bind(sock.ev);
+                }
+            });
+    
+            const store = makeMongoStore({
+                db: mongoClient.db(phonenum),
+                filterChats: false,
+            });
+    
+            const chatInfo = await store.getChatById(from + '@s.whatsapp.net');
+    
+            if (!chatInfo) {
+                console.log("Chat not found for the specified phone number.");
+                res.status(404).json({ error: "Chat not found for the specified phone number." });
+                return;
+            }            
+            const messages = chatInfo.messages;
+            const extractedMessages = [];
+            
+            for (const message of messages ?? []) {
+                const key = message?.message?.key;
+                const isFromMe = key?.fromMe;
+            
+                if (!isFromMe) {
+                    const messageTimestamp = message?.message?.messageTimestamp?.toString();
+                    const pushName = message?.message?.pushName;
+                    const text = message?.message?.message?.extendedTextMessage?.text;
+            
+                    if (messageTimestamp && pushName && text) {
+                        extractedMessages.push({
+                            messageTimestamp,
+                            pushName,
+                            text
+                        });
+                    }
+                }
+            }
+            
+            res.setHeader('Content-Type', 'application/json');
+            res.json({ extractedMessages });
+
+        } catch (error) {
+            console.error("Error:", error);
+            res.status(500).json({ error: "Internal server error." });
+        } 
+    });
+    
+app.get('/chat', async (req, res) => {
+    const phonenum = req.query.phonenum;
+
+    console.log("Start /chat endpoint");
+
+    if (!phonenum) {
+        res.status(400).json({ error: "Phone number parameter is missing." });
+        return;
+    }
+
+    try {
+        console.log("Connecting to MongoDB");
+        // Connect to MongoDB
+        await mongoClient.connect();
+
+        // Check if the database exists using listDatabases
+        const databaseList = await mongoClient.db().admin().listDatabases();
+        const databaseNames = databaseList.databases.map(db => db.name);
+
+        console.log("Existing databases:", databaseNames);
+
+        if (!databaseNames.includes(phonenum)) {
+            // The database doesn't exist
+            console.log(`Database ${phonenum} not found`);
+            res.status(404).json({ error: "Session not found in the database." });
+            return;
+        }
+
+        // Collection and auth state setup
+        const collection = mongoClient.db(phonenum).collection("auth_info_baileys");
+        const { state, saveCreds } = await useMongoDBAuthState(collection);
+
+        // WebSocket setup
+        const sock = makeWASocket({
+            defaultQueryTimeoutMs: undefined,
+            printQRInTerminal: false,
+            markOnlineOnConnect: true,
+            browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
+            logger: pino({ level: 'silent' }),
+            auth: state,
+        });
+
+        // Event handling
+        sock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect, qr } = update || {};
+
+            if (connection === "close") {
+                const shouldReconnect =
+                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+
+                if (shouldReconnect) {
+                    // Handle reconnection logic if needed
+                }
+            } else if (connection === "open") {
+                const store = makeMongoStore({
+                    db: mongoClient.db(phonenum),
+                    filterChats: false,
+                });
+                sock.ev.on('creds.update', saveCreds);
+                store.bind(sock.ev);
+            }
+        });
+
+        // Retrieve all chats
+        const chatsCollection = mongoClient.db(phonenum).collection('chats');
+        const chats = await chatsCollection.find({ id: { $regex: "@s.whatsapp.net$" } }).toArray();
+        
+        const allExtractedMessages = [];
+        
+        for (const chat of chats) {
+            const messages = chat.messages;
+            const extractedMessages = [];
+            const chatIdWithoutSuffix = chat.id.replace(/@s.whatsapp.net$/, '');
+        
+            for (const message of messages ?? []) {
+                const key = message.message.key;
+                const isFromMe = key.fromMe;
+        
+                if (!isFromMe) {
+                    const messageTimestamp = message?.message?.messageTimestamp?.toString();
+                    const pushName = message?.message?.pushName;
+                    const text = message?.message?.message?.extendedTextMessage?.text;
+        
+                    if (messageTimestamp && pushName && text) {
+                        extractedMessages.push({
+                            messageTimestamp,
+                            pushName,
+                            text,
+                        });
+                    }
+                }
+            }
+        
+            allExtractedMessages.push({ sender: chatIdWithoutSuffix, messages: extractedMessages });
+        }
+        
+        res.setHeader('Content-Type', 'application/json');
+        res.json({ allExtractedMessages });
+
+    } catch (error) {
+        console.error("Error:", error);
+        res.status(500).json({ error: "Internal server error." });
+    } 
+});    
 
 mongoClient = new MongoClient(mongoURL, {
   useNewUrlParser: true,
