@@ -13,7 +13,7 @@ const axios = require('axios');
 const fs = require('fs');
 const pino = require('pino');
 const { DisconnectReason, MessageType, MessageOptions, Mimetype } = require("@whiskeysockets/baileys");
-const mongoURL = process.env.MONGO_URL || "mongodb+srv://ash:ash@cluster0.afau75l.mongodb.net";
+const mongoURL = process.env.MONGO_URL || "mongodb+srv://flyingmindsagency:EuusPWxAmmUdSrvb@cluster0.vzfuc2h.mongodb.net";
 const { makeMongoStore } = require("@iamrony777/baileys");
 
 app.use(express.json());
