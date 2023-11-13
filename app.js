@@ -567,8 +567,7 @@ mongoClient.connect()
     console.error('Error connecting to MongoDB:', err);
   });
 
-
-const port = 5123;
+const port = process.env.PORT || 5123;
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });
