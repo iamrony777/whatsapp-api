@@ -130,6 +130,80 @@ app.post("/send-message", async (req, res) => {
         res.status(500).json({ error: "An error occurred while sending the message." });
     }
 });
+app.get("/status/:phonenum", async (req, res) => {
+    try {
+        const { phonenum } = req.params;
+
+        mongoClient = new MongoClient(mongoURL, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+
+        const dbExists = await mongoClient.db(phonenum).listCollections().toArray();
+
+        if (dbExists.length === 0) {
+            // The database doesn't exist
+            res.status(404).json({ error: "Session not found in the database." });
+            return;
+        }
+
+        const collection = mongoClient.db(phonenum).collection("auth_info_baileys");
+        const { state } = await useMongoDBAuthState(collection);
+
+        const sock = makeWASocket({
+            defaultQueryTimeoutMs: undefined,
+            markOnlineOnConnect: true,
+            printQRInTerminal: false,
+            browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
+            logger: pino({ level: 'silent' }),
+            auth: state,
+        });
+
+        // Use a flag to determine if the connection status is set
+        let connectionStatusSet = false;
+
+        // Listen for the connection update event
+        sock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect, qr } = update || {};
+
+            if (connection === "close") {
+                const shouldReconnect =
+                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+
+                if (shouldReconnect) {
+                    // Set the connection status here if needed
+                }
+            } else if (connection === "open") {
+                const store = makeMongoStore({
+                    db: mongoClient.db(phonenum),
+                    filterChats: false,
+                });
+                store.bind(sock.ev);
+
+                // Set the connection status here
+                if (!connectionStatusSet) {
+                    res.status(200).json({ isConnected: true, connectionStatus: 'Connected' });
+                    connectionStatusSet = true;
+                }
+            }
+        });
+
+        // Additional event handlers...
+
+        // Set a timeout to respond with a default status if the connection status is not set
+        setTimeout(() => {
+            if (!connectionStatusSet) {
+                res.status(401).json({ isConnected: false, connectionStatus: 'Disconnected' });
+            }
+        }, 5000); // Adjust the timeout as needed
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "An error occurred while checking the connection status." });
+    }
+});
+
+
 
 app.get("/remove", async (req, res) => {
     const { database } = req.query;
