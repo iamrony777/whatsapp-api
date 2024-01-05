@@ -159,18 +159,51 @@ app.get("/status/:phonenum", async (req, res) => {
             auth: state,
         });
 
-        const isConnected = sock.ev.listeners('connection.update').length > 0;
+        // Use a flag to determine if the connection status is set
+        let connectionStatusSet = false;
 
-        if (isConnected) {
-            res.status(200).json({ isConnected, connectionStatus: 'Connected' });
-        } else {
-            res.status(401).json({ isConnected, connectionStatus: 'Disconnected' });
-        }
+        // Listen for the connection update event
+        sock.ev.on("connection.update", async (update) => {
+            const { connection, lastDisconnect, qr } = update || {};
+
+            if (connection === "close") {
+                const shouldReconnect =
+                    lastDisconnect?.error?.output?.statusCode !== DisconnectReason.loggedOut;
+
+                if (shouldReconnect) {
+                    // Set the connection status here if needed
+                }
+            } else if (connection === "open") {
+                const store = makeMongoStore({
+                    db: mongoClient.db(phonenum),
+                    filterChats: false,
+                });
+                store.bind(sock.ev);
+
+                // Set the connection status here
+                if (!connectionStatusSet) {
+                    res.status(200).json({ isConnected: true, connectionStatus: 'Connected' });
+                    connectionStatusSet = true;
+                }
+            }
+        });
+
+        // Additional event handlers...
+
+        // Set a timeout to respond with a default status if the connection status is not set
+        setTimeout(() => {
+            if (!connectionStatusSet) {
+                res.status(401).json({ isConnected: false, connectionStatus: 'Disconnected' });
+            }
+        }, 5000); // Adjust the timeout as needed
+
     } catch (error) {
         console.error(error);
         res.status(500).json({ error: "An error occurred while checking the connection status." });
     }
 });
+
+
 
 app.get("/remove", async (req, res) => {
     const { database } = req.query;
