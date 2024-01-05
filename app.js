@@ -130,6 +130,47 @@ app.post("/send-message", async (req, res) => {
         res.status(500).json({ error: "An error occurred while sending the message." });
     }
 });
+app.get("/status/:phonenum", async (req, res) => {
+    try {
+        const { phonenum } = req.params;
+
+        mongoClient = new MongoClient(mongoURL, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+        });
+
+        const dbExists = await mongoClient.db(phonenum).listCollections().toArray();
+
+        if (dbExists.length === 0) {
+            // The database doesn't exist
+            res.status(404).json({ error: "Session not found in the database." });
+            return;
+        }
+
+        const collection = mongoClient.db(phonenum).collection("auth_info_baileys");
+        const { state } = await useMongoDBAuthState(collection);
+
+        const sock = makeWASocket({
+            defaultQueryTimeoutMs: undefined,
+            markOnlineOnConnect: true,
+            printQRInTerminal: false,
+            browser: ['Future-Forge-Shin', 'Safari', '3.1.0'],
+            logger: pino({ level: 'silent' }),
+            auth: state,
+        });
+
+        const isConnected = sock.ev.listeners('connection.update').length > 0;
+
+        if (isConnected) {
+            res.status(200).json({ isConnected, connectionStatus: 'Connected' });
+        } else {
+            res.status(401).json({ isConnected, connectionStatus: 'Disconnected' });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: "An error occurred while checking the connection status." });
+    }
+});
 
 app.get("/remove", async (req, res) => {
     const { database } = req.query;
