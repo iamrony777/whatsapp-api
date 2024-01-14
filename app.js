@@ -19,6 +19,17 @@ const { makeMongoStore } = require("@iamrony777/baileys");
 app.use(express.json());
 let mongoClient;
 
+const API_INSTANCE_NOT_FOUND = "Instance not found";
+const API_INVALID_PHONE_NUMBER = "Invalid phone number";
+const API_INSTANCE_INACTIVE = "Instance is inactive";
+const API_NOT_AUTHORIZED = "Not authorized";
+const API_INSTANCE_ALREADY_EXISTS = "Instance already exists";
+const API_SERVER_ERROR = "Server error";
+const API_OTHER_ERROR = "API Other error";
+const NETWORK_ERROR = "Network error";
+const TIMEOUT_ERROR = "Timeout error";
+const JSON_DECODE_ERROR = "JSON decode error";
+const OTHER_ERROR = "Other error";
 
 app.post("/send-message", async (req, res) => {
     try {
@@ -33,7 +44,7 @@ app.post("/send-message", async (req, res) => {
 
         if (dbExists.length === 0) {
             // The database doesn't exist
-            res.status(404).json({ error: "Session not found in the database." });
+            res.status(404).json({ error: API_INSTANCE_NOT_FOUND });
             return;
         }
 
@@ -69,7 +80,7 @@ app.post("/send-message", async (req, res) => {
 
                 const exist = await sock.onWhatsApp(jid); // Correctly use `sock` instead of `socket`
                 if (exist.length === 0) {
-                    res.status(404).json({ error: "The number doesn't exist or isn't registered in WhatsApp." });
+                    res.status(404).json({ error: API_INVALID_PHONE_NUMBER });
                     return;
                 }
                 if (text) {
@@ -127,7 +138,7 @@ app.post("/send-message", async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "An error occurred while sending the message." });
+        res.status(500).json({ error: API_OTHER_ERROR });
     }
 });
 app.get("/status/:phonenum", async (req, res) => {
@@ -143,7 +154,7 @@ app.get("/status/:phonenum", async (req, res) => {
 
         if (dbExists.length === 0) {
             // The database doesn't exist
-            res.status(404).json({ error: "Session not found in the database." });
+            res.status(404).json({ error: API_INSTANCE_NOT_FOUND });
             return;
         }
 
@@ -193,13 +204,13 @@ app.get("/status/:phonenum", async (req, res) => {
         // Set a timeout to respond with a default status if the connection status is not set
         setTimeout(() => {
             if (!connectionStatusSet) {
-                res.status(401).json({ isConnected: false, connectionStatus: 'Disconnected' });
+                res.status(401).json({ error: API_INSTANCE_INACTIVE });
             }
         }, 5000); // Adjust the timeout as needed
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "An error occurred while checking the connection status." });
+        res.status(500).json({ error: API_SERVER_ERROR });
     }
 });
 
@@ -222,7 +233,7 @@ app.get("/remove", async (req, res) => {
         const dbExists = await mongoClient.db(database).listCollections().toArray();
 
         if (dbExists.length === 0) {
-            res.status(404).json({ error: "Session not found in the database." });
+            res.status(404).json({ error: API_INSTANCE_NOT_FOUND });
             return;
         }
         await mongoClient.db(database).dropDatabase();
@@ -230,7 +241,7 @@ app.get("/remove", async (req, res) => {
         res.status(200).json({ message: "Database removed successfully." });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "An error occurred while removing the database." });
+        res.status(500).json({ error: API_OTHER_ERROR });
     } finally {
         mongoClient.close();
     }
@@ -254,7 +265,7 @@ app.post("/remove", async (req, res) => {
         const dbExists = await mongoClient.db(database).listCollections().toArray();
 
         if (dbExists.length === 0) {
-            res.status(404).json({ error: "Session not found in the database." });
+            res.status(404).json({ error: API_INSTANCE_NOT_FOUND });
             return;
         }
         await mongoClient.db(database).dropDatabase();
@@ -262,7 +273,7 @@ app.post("/remove", async (req, res) => {
         res.status(200).json({ message: "Database removed successfully." });
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "An error occurred while removing the database." });
+        res.status(500).json({ error: API_OTHER_ERROR });
     } finally {
         mongoClient.close();
     }
@@ -306,7 +317,7 @@ app.get("/check", async (req, res) => {
             sock.ev.on("creds.update", saveCreds);
             const exist = await sock.onWhatsApp(jid);
             if (exist.length === 0) {
-                res.status(404).json({ error: "The number doesn't exist or isn't registered in WhatsApp." });
+                res.status(404).json({ error: API_INVALID_PHONE_NUMBER });
             } else {
                 res.status(200).json({ message: "The number is registered on WhatsApp." });
             }
@@ -441,7 +452,7 @@ app.get("/getQR/:phonenum", async (req, res) => {
             if (!databaseNames.includes(phonenum)) {
                 // The database doesn't exist
                 console.log(`Database ${phonenum} not found`);
-                res.status(404).json({ error: "Session not found in the database." });
+                res.status(404).json({ error: API_INSTANCE_NOT_FOUND });
                 return;
             }
     
@@ -489,7 +500,7 @@ app.get("/getQR/:phonenum", async (req, res) => {
     
             if (!chatInfo) {
                 console.log("Chat not found for the specified phone number.");
-                res.status(404).json({ error: "Chat not found for the specified phone number." });
+                res.status(404).json({ error: "Chat not Found" });
                 return;
             }            
             const messages = chatInfo.messages;
@@ -519,7 +530,7 @@ app.get("/getQR/:phonenum", async (req, res) => {
 
         } catch (error) {
             console.error("Error:", error);
-            res.status(500).json({ error: "Internal server error." });
+            res.status(500).json({ error: API_OTHER_ERROR });
         } 
     });
     
@@ -547,7 +558,7 @@ app.get('/chat', async (req, res) => {
         if (!databaseNames.includes(phonenum)) {
             // The database doesn't exist
             console.log(`Database ${phonenum} not found`);
-            res.status(404).json({ error: "Session not found in the database." });
+            res.status(404).json({ error: API_INSTANCE_NOT_FOUND });
             return;
         }
 
@@ -624,7 +635,7 @@ app.get('/chat', async (req, res) => {
 
     } catch (error) {
         console.error("Error:", error);
-        res.status(500).json({ error: "Internal server error." });
+        res.status(500).json({ error: API_SERVER_ERROR });
     } 
 });    
 
