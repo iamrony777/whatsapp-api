@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "esModuleInterop": true,
+    "target": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "sourceMap": true,
+    "inlineSources": true,
+    "sourceRoot": "/",
+    "forceConsistentCasingInFileNames": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "noEmitOnError": true,
+    "noImplicitAny": true,
+    "declaration": true,
+    "declarationMap": false,
+    "pretty": true,
+    "removeComments": true,
+    "noImplicitOverride": true,
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true,
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node",
+  },
+  "lib": [
+    "esnext",
+    "es5",
+    "es6"
+  ],
+  "include": [
+    "src/*",
+    "src/**/*",
+    "src/**/**/*",
+    "index.ts",
+    "_config.ts",
+    "src/api"
+  ],
+  "exclude": [
+    "node_modules",
+    "node_modules/*",
+    "./node_modules",
+    "./node_modules/*",
+    "./node_modules/@types/node/index.d.ts",
+    "*.tgz",
+    "test-*",
+    "**/_*",
+    "**/**/_*",
+    "_*.ts",
+    "src/api",
+    "src/_*.ts",
+    "src/**/**/test*.ts",
+    "src/config"
+  ]
+}

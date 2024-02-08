@@ -1,0 +1,20 @@
+{
+    "code-runner.clearPreviousOutput": false,
+    "code-runner.executorMap": {
+        "javascript": "node",
+        "typescript": "node --experimental-specifier-resolution=node --loader ts-node/esm",
+		// "typescript": ".vscode/run",
+		// "typescript": "ts-node",
+    },
+    "code-runner.ignoreSelection": true,
+    "code-runner.saveAllFilesBeforeRun": true,
+    "code-runner.runInTerminal": true,
+    "code-runner.saveFileBeforeRun": true,
+	"typescript.format.enable": true,
+    "editor.defaultColorDecorators": true,
+    "editor.colorDecoratorsActivatedOn": "hover",
+    "editor.experimental.asyncTokenization": true,
+    "editor.experimental.asyncTokenizationLogging": true,
+    "editor.guides.indentation": true,
+    "editor.linkedEditing": true,
+}

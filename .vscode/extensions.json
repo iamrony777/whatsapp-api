@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "formulahendry.code-runner",
+        "yoavbls.pretty-ts-errors",
+        "kakumei.ts-debug"
+    ]
+}
