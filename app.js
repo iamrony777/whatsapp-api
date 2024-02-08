@@ -214,8 +214,6 @@ app.get("/status/:phonenum", async (req, res) => {
     }
 });
 
-
-
 app.get("/remove", async (req, res) => {
     const { database } = req.query;
     if (!database) {
