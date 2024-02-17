@@ -1,13 +1,13 @@
 import { Router, Request, Response } from "express";
-import { Socket } from "../core/socket.js";
+import { Socket } from "../../core/socket.js";
 import { Buffer } from "buffer";
-import { LOGGER } from "../utils/logger.js";
+import { LOGGER } from "../../utils/logger.js";
 import axios from "axios";
 const router = Router();
 
 import { readFile } from "fs/promises";
-import { executeOnOpenConnection } from "../events/connection.update.js";
-import { getOnCredsUpdate } from "../events/creds.update.js";
+import { executeOnOpenConnection } from "../../events/connection.update.js";
+import { getOnCredsUpdate } from "../../events/creds.update.js";
 import { WAProto } from "@iamrony777/baileys";
 
 const logger = LOGGER("routes/send.message", "debug");
@@ -110,8 +110,7 @@ router.post(
     };
 
     await waClient.connect();
-    await waClient.eventsMap({
-      socket: waClient.socket,
+    await waClient.eventsMap(waClient.socket, {
       onConnectionUpdate: executeOnOpenConnection(
         res,
         waClient,

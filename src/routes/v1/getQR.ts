@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { getOnConnectionUpdate } from "../events/connection.update.js";
-import { getOnCredsUpdate } from "../events/creds.update.js";
-import { Socket } from "../core/socket.js";
+import { getOnConnectionUpdate } from "../../events/connection.update.js";
+import { getOnCredsUpdate } from "../../events/creds.update.js";
+import { Socket } from "../../core/socket.js";
 
 const router = Router();
 
@@ -20,8 +20,8 @@ router.get("/getQR/:phonenum", async (req, res) => {
 
   waClient.store.bind(waClient.socket.ev);
 
-  await waClient.eventsMap({
-    socket: waClient.socket,
+  await waClient.eventsMap(waClient.socket, {
+    
     onConnectionUpdate: getOnConnectionUpdate(res, waClient, Socket),
     onCredsUpdate: getOnCredsUpdate(waClient.saveCreds),
   });

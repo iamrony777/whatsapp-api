@@ -122,15 +122,16 @@ export class Socket {
     };
   }
 
-  async eventsMap({
-    socket,
-    onConnectionUpdate,
-    onCredsUpdate,
-  }: {
-    socket: WASocket;
-    onConnectionUpdate: (update: Partial<ConnectionState>) => Promise<void>;
-    onCredsUpdate: ReturnType<typeof getOnCredsUpdate>;
-  }) {
+  async eventsMap(
+    socket: WASocket,
+    {
+      onConnectionUpdate,
+      onCredsUpdate,
+    }: {
+      onConnectionUpdate: (update: Partial<ConnectionState>) => Promise<void>;
+      onCredsUpdate: ReturnType<typeof getOnCredsUpdate>;
+    }
+  ) {
     socket.ev.on("connection.update", onConnectionUpdate);
     socket.ev.on("creds.update", onCredsUpdate);
   }

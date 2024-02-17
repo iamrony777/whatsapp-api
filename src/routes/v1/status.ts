@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
-import { LOGGER } from "../utils/logger.js";
-import { Socket } from "../core/socket.js";
-import { executeOnOpenConnection } from "../events/connection.update.js";
-import { getOnCredsUpdate } from "../events/creds.update.js";
+import { LOGGER } from "../../utils/logger.js";
+import { Socket } from "../../core/socket.js";
+import { executeOnOpenConnection } from "../../events/connection.update.js";
+import { getOnCredsUpdate } from "../../events/creds.update.js";
 const logger = LOGGER("routes/status", "debug");
 const router = Router();
 
@@ -32,8 +32,7 @@ router.get("/status/:phonenum", async (req, res) => {
   };
 
   await waClient.connect();
-  await waClient.eventsMap({
-    socket: waClient.socket,
+  await waClient.eventsMap(waClient.socket, {
     onConnectionUpdate: executeOnOpenConnection(
       res,
       waClient,

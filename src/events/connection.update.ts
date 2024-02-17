@@ -109,6 +109,7 @@ export const executeOnOpenConnection = (
 
       try {
         await funtionToExecute();
+        delete waSocket.socket
       } catch (error: any) {
         response.status(500).json({ error: error.toString() });
       }
